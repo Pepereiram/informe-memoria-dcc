@@ -5,28 +5,28 @@
 
 #let example-metadata = (
   // El título de la memoria o tesis, en mayúsculas
-  titulo: "TÍTULO DE LA MEMORIA/TESIS",
+  titulo: "INTEGRACIÓN DE POLYLLA Y ACTUALIZACIÓN DE PLUGIN MEJORAMIENTO DE MALLAS DE UNIDADES DE RESPUESTA HIDROLÓGICA EN QGIS",
   
   // El diccionario con nombre y pronombre de la persona que escribe el documento
   autoria: (
-    nombre: "NOMBRE NOMBRE APELLIDO APELLIDO",
-    pronombre: pronombre.elle,
+    nombre: "José Ignacio Pereira Morgado",
+    pronombre: pronombre.el,
   ),
 
   // LISTA de profesores guías, en que cada elemento es un diccionario con nombre y pronombre.
   // recordar que una lista de un solo elemento debe tener una coma al final
   profesores: (
     (
-      nombre: "NOMBRE APELLIDO APELLIDO",
-      pronombre: pronombre.el,
+      nombre: " NANCY HITSCHFELD K.",
+      pronombre: pronombre.ella,
     ), // esta coma es importante para que sea una lista
   ),
 
   // LISTA de co-guías, en que cada elemento es un diccionario con nombre y pronombre.
   coguias: (
     (
-      nombre: "NOMBRE APELLIDO APELLIDO",
-      pronombre: pronombre.ella
+      nombre: "PEDRO SANZANA",
+      pronombre: pronombre.el
     ), // esta coma es importante para que sea una lista
   ),
 
@@ -63,15 +63,14 @@
     memoria: true,
 
     // En caso de ser auspiciado por alguna institución
-    auspicio: none,
+    auspicio: "el Fondo Nacional de Desarrollo Científico y Tecnológico.",
   
     // El magíster al que se opta, si es tesis
     grado-magister: "COMPUTACIÓN",
 
     comision: (
-      "NOMBRE COMPLETO UNO",
-      "NOMBRE COMPLETO DOS",
-      "NOMBRE COMPLETO TRES",
+      "MAURICIO PALMA L.",
+      "ÉRIC TANTER",
     ),
   ),
 )

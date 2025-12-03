@@ -12,7 +12,7 @@
 ]
 
 #dedicatoria[
-    Una dedicatoria especial para alguien especial.
+    Dedicado a mi abuelo, Raúl.
 ]
 
 #agradecimientos[

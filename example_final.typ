@@ -4,50 +4,45 @@
 #show: conf.with(metadata: example-metadata)
 
 #resumen(metadata: example-metadata)[
-    #lorem(150)
-    
-    #lorem(100)
-    
-    #lorem(100)
+Este trabajo aborda la generación de mallas poligonales para apoyar la modelación hidrológica en cuencas urbanas y periurbanas, utilizando QGIS como plataforma de trabajo. A partir de requerimientos geométricos asociados a Unidades de Respuesta Hidrológica y de antecedentes previos que automatizaban la triangulación y disolución en QGIS, se identificó como problema principal la inestabilidad del flujo de triangulación, que podía provocar cierres inesperados del Sistema de Información Geográfica (SIG) en geometrías complejas. En este contexto, se plantea integrar el algoritmo Polylla, desarrollado originalmente en C++, y rediseñar el flujo del plugin para hacerlo operativo dentro del entorno de QGIS.
+
+La implementación se centró en dos aportes. Primero, se desarrolló un binding para exponer Polylla desde C++ a Python mediante pybind11 y CMake, permitiendo su uso como librería en Python. Segundo, se diseñó y construyó un nuevo plugin con una arquitectura por etapas: la triangulación se ejecuta como subproceso externo y genera archivos intermedios (Shapefile), mientras que Polylla se ejecuta dentro de QGIS desde Python, convirtiendo la triangulación a formato OFF y devolviendo la malla poligonal como una capa en memoria. La interfaz se implementó con Qt Designer y se organizó en dos diálogos alineados con estas etapas, incorporando parámetros configurables para triangulación y opciones de suavizado para Polylla.
+
+Como resultado, se obtuvo un flujo funcional que permite generar triangulaciones y mallas poligonales dentro de QGIS de forma estable en los casos demostrativos presentados, sin cierres inesperados del software. Se concluye que la separación de la triangulación como subproceso y la integración de Polylla mediante un binding a Python permiten operar el proceso completo en un entorno SIG con mayor control y menor riesgo de fallos. Queda como trabajo futuro realizar una evaluación cuantitativa más rigurosa de la calidad geométrica de las mallas mediante métricas como convexidad y factores de forma, además de explorar optimizaciones de rendimiento e integración más profunda del proceso en QGIS.
+
 ]
 
 #dedicatoria[
     Dedicado a mi abuelo, Raúl.
 ]
 
-#agradecimientos[
-    #lorem(150)
-    
-    #lorem(100)
-    
-    #lorem(100)
-]
 
 #show: start-doc
 
 #capitulo(title: "Introducción")[
 
-La gestión eficiente de los recursos hídricos en zonas urbanas y periurbanas requiere herramientas de modelación avanzadas capaces de representar la complejidad del territorio. Modelos hidrológicos distribuidos, como PUMMA (Peri-Urban Model for landscape MAnagment) [...], basan su análisis en Unidades de Respuesta Hidrológica (URHs). Estas unidades deben cumplir con estrictos requisitos geométricos, como la convexidad y ciertos parámetros de forma, para garantizar la precisión de las simulaciones. En este contexto, la generación automatizada de estas mallas poligonales a partir de información geográfica es un desafío que combina la ingeniería en computación con la ingeniería hidráulica.
+La gestión eficiente de los recursos hídricos en zonas urbanas y periurbanas requiere herramientas de modelación avanzadas capaces de representar la complejidad del territorio. Modelos hidrológicos distribuidos, como PUMMA (Peri-Urban Model for landscape MAnagment) @Jankowfsky10, basan su análisis en Unidades de Respuesta Hidrológica (URHs) @Flugel95. Estas unidades deben cumplir con requisitos geométricos, como la convexidad y ciertos parámetros de forma, para asegurar condiciones adecuadas para la simulación. En este contexto, la generación automatizada de mallas poligonales a partir de información geográfica es un desafío que combina la ingeniería en computación con la ingeniería hidráulica.
 
-Este trabajo aborda el problema de generar mallas poligonales de alta calidad geométrica utilizando QGIS como plataforma central. Se seleccionó esta herramienta por ser de código abierto y contar con una activa comunidad que aporta soporte y funcionalidades. Además, el desarrollo de plugins en QGIS se realiza mediante Python, lo que otorga gran flexibilidad. Sin embargo, la ejecución de código externo dentro de este ambiente presenta desafíos técnicos. Específicamente, la integración directa de librerías de triangulación ha generado inestabilidad, conflictos de memoria y cierres inesperados (crashes), impidiendo la automatización confiable del proceso en versiones anteriores.
+Este trabajo aborda el problema de generar mallas poligonales controlando parámetros de calidad geométrica, utilizando QGIS como plataforma central. Se seleccionó esta herramienta por ser de código abierto y contar con una activa comunidad que aporta soporte y funcionalidades. Además, el desarrollo de plugins en QGIS se realiza mediante Python, lo que otorga flexibilidad para extender el software. Sin embargo, la ejecución de código externo dentro de este ambiente presenta desafíos técnicos. Específicamente, la integración directa de librerías de triangulación ha generado inestabilidad, conflictos de memoria y cierres inesperados (crashes), impidiendo la automatización confiable del proceso en versiones anteriores.
 
-El presente trabajo busca resolver estas problemáticas mediante la ingeniería de software y la implementación de nuevos algoritmos. Se propone la integración del algoritmo Polylla [...], originalmente escrito en C++, al entorno de Python y posteriormente a QGIS. Para ello, se desarrolló un binding que exporta las funcionalidades de Polylla como una librería nativa de Python. Utilizando esta librería y tomando como base el trabajo previo de Sergio Villarroel [...], se diseñó una nueva versión del plugin. Esta versión permite generar mallas controlando sus parámetros de calidad y rediseña el flujo de triangulación para asegurar la estabilidad, desacoplando procesos críticos para evitar fallos en el entorno de QGIS. De esta forma, se entrega una herramienta modular y robusta que facilita la preparación de datos para el modelamiento hidrológico.
+El presente trabajo busca abordar estas problemáticas mediante ingeniería de software e integración de algoritmos. Se propone la incorporación del algoritmo Polylla @Salinas22, originalmente escrito en C++, al entorno de Python y posteriormente a QGIS. Para ello, se desarrolló un binding que exporta funcionalidades de Polylla como una librería nativa de Python. Utilizando esta librería y tomando como base el trabajo previo de Sergio Villarroel @Villarroel23, se diseñó una nueva versión del plugin. Esta versión permite generar mallas ajustando parámetros relevantes del proceso y rediseña el flujo de triangulación para mejorar la estabilidad, desacoplando etapas críticas para reducir fallos en el entorno de QGIS. El resultado es una herramienta modular orientada a apoyar la preparación de datos para el modelamiento hidrológico.
 
-Finalmente, el informe se estructura de la siguiente manera: en la Situación Actual se revisan los antecedentes teóricos, las herramientas previas y el algoritmo Polylla. La sección de Implementación detalla la creación del binding, la arquitectura del plugin y la solución a los problemas de estabilidad. Posteriormente, en Resultados y Discusión, se presentan las pruebas de funcionamiento y la validación de las mallas generadas, cerrando con las Conclusiones y líneas de trabajo futuro.
+Finalmente, el informe se estructura de la siguiente manera: en la Situación Actual se revisan los antecedentes teóricos, las herramientas previas y el algoritmo Polylla. La sección de Implementación detalla la creación del binding, la arquitectura del plugin y la solución a los problemas de estabilidad. Posteriormente, en Resultados y Discusión, se presentan pruebas de funcionamiento mediante casos demostrativos en QGIS, mostrando la generación de triangulación y la aplicación de Polylla sobre distintas superficies. El documento cierra con las Conclusiones y líneas de trabajo futuro, donde se plantea como continuación natural un análisis cuantitativo más completo de calidad y rendimiento.
 
-== Objevitos
+== Objetivos
 === Objetivo General
 
-Diseñar e implementar una herramienta de software integrada en QGIS que permita la generación de mallas poligonales de alta calidad mediante la utilización del algoritmo Polylla, asegurando la estabilidad operativa y la corrección de errores críticos presentes en versiones anteriores.
+Diseñar e implementar una herramienta de software integrada en QGIS que permita la generación de mallas poligonales mediante la utilización del algoritmo Polylla, asegurando estabilidad operativa y corrigiendo errores críticos presentes en versiones anteriores, con control de parámetros relevantes del proceso.
 
 === Objetivos Específicos
 
 + *Desarrollar un binding de Python para Polylla*: Crear una interfaz funcional entre el código original en C++ de Polylla y Python, permitiendo su uso como una librería estándar dentro del ecosistema de desarrollo actual.
 + *Rediseñar la arquitectura de triangulación*: Implementar un mecanismo de ejecución externa para el proceso de triangulación que evite los conflictos de memoria y crashes aleatorios observados al utilizar la librería Triangle directamente dentro del entorno de QGIS.
 + *Desarrollar un nuevo plugin para QGIS*: Integrar la nueva librería de Polylla y el flujo de triangulación corregido en un complemento de usuario final, permitiendo la manipulación de capas vectoriales y la configuración de parámetros.
-+ *Validar y comparar la solución*: Evaluar la calidad de las mallas generadas en contraste con las herramientas previas.
++ *Demostrar el funcionamiento de la solución*: Ejecutar el flujo completo (triangulación y Polylla) en casos representativos dentro de QGIS, generando y visualizando las capas resultantes. La validación cuantitativa y la comparación con herramientas previas se dejan como trabajo futuro.
 
 ]
+
 
 #capitulo(title: "Situación Actual")[
     
@@ -55,13 +50,13 @@ Este trabajo de título es la intersección de dos líneas de desarrollo previas
 
 == Antecedentes en QGIS
 
-El origen de la necesidad geométrica abordada en esta memoria parte de la tesis de magíster de Pedro Sanzana [...]. Su trabajo se centró en la caracterización y modelamiento de procesos hidrológicos en cuencas periurbanas del piedemonte de Santiago. Para utilizar modelos distribuidos como PUMMA, Sanzana estableció que el análisis espacial requería mallas base compuestas por polígonos irregulares (URHs). Sin embargo, identificó que estas unidades debían cumplir con criterios estrictos de forma, convexidad y orientación para evitar inestabilidades numéricas en las simulaciones hídricas.
+El origen de la necesidad geométrica abordada en esta memoria parte de la tesis de magíster de Pedro Sanzana @Sanzana12. Su trabajo se centró en la caracterización y modelamiento de procesos hidrológicos en cuencas periurbanas del piedemonte de Santiago. Para utilizar modelos distribuidos como PUMMA, Sanzana estableció que el análisis espacial requería mallas base compuestas por polígonos irregulares (URHs). Sin embargo, identificó que estas unidades debían cumplir con criterios estrictos de forma, convexidad y orientación para evitar inestabilidades numéricas en las simulaciones hídricas.
 
-Posteriormente, Sergio Villarroel [...] retomó estos requerimientos con el objetivo de automatizar el proceso dentro de un Sistema de Información Geográfica (GIS). Villarroel desarrolló un plugin para QGIS capaz de triangular polígonos y disolverlos basándose en criterios de forma y convexidad planteados por Sanzana. Aunque este plugin validó la factibilidad de la automatización, presenta problemas de estabilidad, ocasionando el cierre del programa y la pérdida del progreso.
+Posteriormente, Sergio Villarroel @Villarroel23 retomó estos requerimientos con el objetivo de automatizar el proceso dentro de un Sistema de Información Geográfica (GIS). Villarroel desarrolló un plugin para QGIS capaz de triangular polígonos y disolverlos basándose en criterios de forma y convexidad planteados por Sanzana. Aunque este plugin validó la factibilidad de la automatización, presenta problemas de estabilidad, ocasionando el cierre del programa y la pérdida del progreso.
 
 == Algoritmo Polylla
 
-Paralelamente a lo anterior, Sergio Salinas [...] propuso el algoritmo Polylla. Este algoritmo, implementado originalmente en C++, ofrece una estrategia robusta para generar mallas poligonales a partir de triangulaciones arbitrarias.
+Paralelamente a lo anterior, Sergio Salinas @Salinas22 propuso el algoritmo Polylla. Este algoritmo, implementado originalmente en C++, ofrece una estrategia para generar mallas poligonales a partir de triangulaciones arbitrarias.
 
 El funcionamiento de Polylla se basa en el concepto de regiones de arista terminal (terminal-edge regions). En lugar de procesar polígonos de forma aislada, el algoritmo agrupa triángulos adyacentes basándose en la longitud de sus aristas. El proceso consta de tres fases principales:
 
@@ -69,17 +64,17 @@ El funcionamiento de Polylla se basa en el concepto de regiones de arista termin
 + *Recorrido*: Se construyen los polígonos fusionando los triángulos que pertenecen a una misma región, utilizando las aristas etiquetadas como guía.
 + *Reparación*: Se detectan polígonos "no simples" (que no sean simplemente conexos) y se dividen para asegurar que la malla final sea válida geométricamente.
 
-La principal ventaja de Polylla frente a métodos clásicos, como los diagramas de Voronoi [...], radica en su capacidad para generar mallas con menos polígonos y, fundamentalmente, sin insertar puntos adicionales al dominio. Esto asegura que la malla resultante respete exactamente los vértices de la entrada original, una característica crítica para mantener la fidelidad de los datos topográficos. Además, su estructura de datos basada en Half-Edge permite una manipulación eficiente de la topología.
+Según su formulación, Polylla busca generar mallas con menos polígonos y sin insertar puntos adicionales al dominio. Esto permite que la malla resultante respete exactamente los vértices de la entrada original, una característica crítica para mantener la fidelidad de los datos topográficos. Además, su estructura de datos basada en Half-Edge permite una manipulación eficiente de la topología.
 
 == Tecnologías y herramientas
 
 === QGIS
 
-QGIS es la plataforma de referencia en sistemas de información geográfica de código abierto [...]. Su arquitectura permite la extensión de funcionalidades mediante plugins escritos en Python (PyQGIS). Este entorno ofrece acceso a librerías geoespaciales como GDAL/OGR, pero impone restricciones en la gestión de memoria y subprocesos, lo que es crítico para la estabilidad de algoritmos computacionalmente intensivos.
+QGIS es la plataforma de referencia en sistemas de información geográfica de código abierto. Su arquitectura permite la extensión de funcionalidades mediante plugins escritos en Python (PyQGIS). Este entorno ofrece acceso a librerías geoespaciales como GDAL/OGR, pero impone restricciones en la gestión de memoria y subprocesos, lo que es crítico para la estabilidad de algoritmos computacionalmente intensivos.
 
 === Triangle
 
-Para la etapa de triangulación, el estándar de facto en la investigación académica es la librería Triangle, desarrollada por J.R. Shewchuk [...]. Esta librería permite generar triangulaciones de Delaunay con restricciones de calidad (ángulos mínimos, áreas máximas).
+Para la etapa de triangulación, el estándar de facto en la investigación académica es la librería Triangle, desarrollada por J.R. Shewchuk @Shewchuk96. Esta librería permite generar triangulaciones de Delaunay con restricciones de calidad (ángulos mínimos, áreas máximas).
 
 === Pybind11
 
@@ -89,15 +84,15 @@ Dado que Polylla está escrito en `C++` por razones de rendimiento y el ecosiste
 
 El plugin desarrollado previamente por Villarroel sufre de inestabilidad ("crashes") al ejecutarse sobre geometrías complejas o mallas de gran tamaño.
 
-El diagnóstico realizado sugiere que el problema radicaba en la invocación directa de la librería Triangle dentro del mismo espacio de memoria del proceso principal de QGIS. Al producirse errores de segmentación o manejo de excepciones no controladas dentro de la rutina de triangulación, QGIS se cerraba abruptamente, provocando la pérdida de trabajo del usuario.
+A partir de pruebas y revisión del flujo, se considera que el problema radicaba en la invocación directa de la librería Triangle dentro del mismo espacio de memoria del proceso principal de QGIS. Al producirse errores de segmentación o manejo de excepciones no controladas dentro de la rutina de triangulación, QGIS se cerraba abruptamente, provocando la pérdida de trabajo del usuario.
 
 == Justificación de la propuesta
 
-Ante el escenario descrito, surge la necesidad de rediseñar la solución tecnológica existente. El plugin anterior dependía de métodos de disolución que no siempre garantizaban una solución geométrica adecuada en una sola iteración y presentaba problemas de estabilidad al trabajar con geometrías complejas. Estas limitaciones afectan directamente la calidad de las mallas utilizadas en la modelación hidrológica y la confiabilidad de la herramienta desde el punto de vista del usuario.
+La creación del nuevo plugin se justifica por la necesidad de rediseñar la solución tecnológica existente frente a las limitaciones observadas en el flujo previo. El plugin anterior dependía de métodos de disolución que no siempre entregaban una solución geométrica adecuada en una sola iteración y presentaba problemas de estabilidad al trabajar con geometrías complejas. Estas limitaciones afectan la confiabilidad del proceso desde el punto de vista del usuario y condicionan el uso de las mallas generadas como insumo para modelación hidrológica.
 
-La creación del nuevo plugin se justifica, en primer lugar, por una mejora en la robustez algorítmica. La integración de Polylla reemplaza la lógica de disolución anterior por un algoritmo determinista. Esto permite generar mallas con menos polígonos, sin incorporar vértices artificiales que puedan alterar la representación del dominio y, con ello, el comportamiento del modelo hidrológico.
+En este contexto, se incorpora Polylla como una alternativa a la lógica de disolución previa. Polylla es un algoritmo determinista orientado a construir mallas poligonales a partir de una triangulación, sin introducir puntos adicionales al dominio. Su integración en el plugin busca ampliar las herramientas disponibles para generar mallas poligonales a partir de un mismo insumo triangulado, manteniendo una representación consistente de los vértices de entrada. En esta memoria se presenta la integración y el funcionamiento del flujo completo, mientras que el análisis cuantitativo del impacto de Polylla sobre la calidad geométrica de las mallas se deja como proyección de trabajo futuro.
 
-En segundo lugar, la propuesta apunta a mejorar la estabilidad del software. La estrategia adoptada consiste en desacoplar el proceso de triangulación del ambiente de QGIS, ejecutándolo como un subproceso independiente del sistema.
+Finalmente, la propuesta también responde a un objetivo de estabilidad. Para reducir cierres inesperados asociados a la triangulación, se adopta una estrategia de desacople: la triangulación se ejecuta como un subproceso independiente del sistema, separando su ejecución del proceso principal de QGIS. Con esto se busca mantener el entorno de trabajo del usuario y permitir que los fallos en la etapa de triangulación se manejen de forma controlada.
 
 
 ]
@@ -114,38 +109,27 @@ Los requisitos funcionales describen las acciones que el usuario debe poder real
 La herramienta debe permitir lo siguiente:
 
 - Seleccionar una capa vectorial poligonal en QGIS como entrada para el proceso de malla.
-
 - Ejecutar la triangulación de la geometría de entrada, configurando al menos ángulo mínimo y área máxima.
-
-- Definir rutas de salida de archivos que se crean a partir de una triangulación.
-
-- Aplicar Polylla sobre una triangulación previamente generada.
-
-
-La herramienta debe generar como salida una malla poligonal (capa) derivada de Polylla.
-
-
-La herramienta debe permitir ejecutar el flujo completo de forma secuencial: triangulación y luego Polylla.
+- Definir un directorio o ruta de salida para los archivos generados por la triangulación (por ejemplo, en formato SHP).
+- Seleccionar una capa triangulada como entrada para la ejecución de Polylla.
+- Aplicar Polylla sobre la triangulación seleccionada y generar como salida una malla poligonal como capa en memoria dentro de QGIS.
+- Ejecutar el flujo completo de forma secuencial: triangulación y luego Polylla.
 
 === Requisitos no funcionales
 
-Los requisitos no funcionales establecen restricciones y propiedades del sistema asociadas al uso dentro de QGIS. Estos criterios son relevantes debido a que el trabajo se ejecuta en un entorno con un proceso principal que puede terminar en un _crash_ si llega a haber una falla de bibliotecas externas, y donde los tiempos de ejecución y la claridad de la interfaz influyen directamente en la utilidad práctica del plugin.
+Los requisitos no funcionales establecen restricciones y propiedades del sistema asociadas al uso dentro de QGIS. Estos criterios son relevantes debido a que el trabajo se ejecuta en un entorno con un proceso principal que puede terminar en un _crash_ si ocurre una falla de bibliotecas externas, y donde los tiempos de ejecución y la claridad de la interfaz influyen directamente en la utilidad práctica del plugin.
 
-- Estabilidad: la ejecución de la triangulación no debe cerrar QGIS de forma abrupta al fallar, incluso ante geometrías no conexas o entradas complejas.
-
+- Estabilidad: la ejecución de la triangulación no debe cerrar QGIS de forma abrupta al fallar, incluso ante geometrías no convexas o entradas complejas.
+- Aislamiento de fallos: si una etapa falla (triangulación o Polylla), el sistema debe terminar la ejecución de forma controlada y reportar el error al usuario.
 - Reproducibilidad: dado un mismo input y parámetros, el sistema debe producir resultados consistentes.
-
 - Mantenibilidad: el código debe quedar separado por componentes (triangulación y Polylla) para facilitar cambios y depuración.
-
 - Usabilidad: los parámetros principales deben estar disponibles en la interfaz, con valores por defecto razonables y validación de rangos.
-
 - Rendimiento: el tiempo de ejecución debe ser razonable para tamaños de entrada típicos.
 
 == Arquitectura general de la solución
 
 En este apartado se describe la arquitectura general del plugin y el flujo de ejecución completo, desde la selección de una capa en QGIS hasta la generación de la malla poligonal final. La arquitectura se diseñó para responder a dos restricciones principales: por un lado, la necesidad de controlar parámetros de calidad durante la triangulación y, por otro, evitar cierres inesperados de QGIS asociados a la ejecución de rutinas de triangulación dentro del mismo proceso del SIG. Para ello, la solución se organiza en dos etapas, donde la triangulación se ejecuta como subproceso externo y Polylla se ejecuta dentro del entorno Python de QGIS utilizando el binding desarrollado. 
 
-INSERTAR FIGURA AQUI??
 
 === Flujo de ejecución
 
@@ -199,7 +183,6 @@ La triangulación se realiza utilizando la librería triangle. El script transfo
 
 El script incluye funciones auxiliares para esta preparación. build_simple_segments construye los segmentos cerrados de cada anillo a partir de sus vértices. polygon_centroid calcula un punto representativo para cada anillo interior, usado como punto dentro del agujero, lo que permite a la triangulación respetar vacíos internos. Posteriormente, triangulate_single_polygon ejecuta la triangulación sobre un polígono individual y devuelve una colección de triángulos representados nuevamente como polígonos.
 
-AGREGAR FIGURA???
 
 === Parametros de calidad
 
@@ -313,78 +296,113 @@ Frente a estas limitaciones, se optó por ejecutar la triangulación mediante un
 
 ]
 
-#capitulo(title: "Resultados y discusión")[
+#capitulo(title: "Resultados: demostración de funcionamiento")[
 
-== Casos de prueba
+En este capítulo se presenta evidencia visual del funcionamiento del plugin en QGIS. El objetivo es mostrar el flujo completo de trabajo, desde una capa poligonal de entrada, pasando por la triangulación, hasta la generación de una malla poligonal mediante Polylla. Los casos se eligieron para cubrir situaciones típicas del uso esperado, variando la complejidad geométrica y la presencia de agujeros. En cada caso se muestran tres etapas: (i) geometría de entrada sin triangular, (ii) triangulación generada y (iii) malla poligonal resultante tras aplicar Polylla.
+
+#pagebreak()
+== Caso 1: Figura simple sin agujeros
+
+Este caso corresponde a una geometría simple y regular, utilizada como verificación básica del flujo completo.
+
+
+#figure(
+        image("imagenes/qgis1.png", width: 55%),
+        caption: "Caso 1 (a): capa poligonal de entrada, sin triangular.",
+    )
+#figure(
+        image("imagenes/qgis1tri.png", width: 55%),
+        caption: "Caso 1 (b): capa triangulada (min_angle=20, max_area=1000).",
+    )
+#figure(
+        image("imagenes/qgis1pol.png", width: 55%),
+        caption: "Caso 1 (c): capa poligonal resultante tras aplicar Polylla.",
+    )
+
+== Caso 2: Figura compleja sin agujeros
+
+Este caso utiliza una geometría sin agujeros, pero con mayor complejidad que el caso anterior debido a los múltiples irregularidades del contorno que lo deforman, para observar el comportamiento del flujo en contornos más irregulares.
+
+
+#figure(
+        image("imagenes/qgis2.png", width: 55%),
+        caption: "Caso 2 (a): capa poligonal de entrada, sin triangular.",
+    )
+
+#figure(
+        image("imagenes/qgis2tria.png", width: 55%),
+        caption: "Caso 2 (b): capa triangulada (min_angle=20, max_area=1000).",
+    )
+
+#figure(
+        image("imagenes/qgis2pol.png", width: 55%),
+        caption: "Caso 2 (c): capa poligonal resultante tras aplicar Polylla.",
+    )
+
+== Caso 3: Figura simple con agujeros
+
+Este caso incluye agujeros en la geometría, lo que requiere que la triangulación incorpore correctamente los vacíos internos para que el resultado final los preserve al aplicar Polylla.
+
+#figure(
+        image("imagenes/qgis3.png", width: 55%),
+        caption: "Caso 3 (a): capa poligonal de entrada, con agujeros, sin triangular.",
+    )
+
+#figure(
+        image("imagenes/qgis3tri.png", width: 55%),
+        caption: "Caso 3 (b): capa triangulada (min_angle=20, max_area=1000).",
+    )
+
+#figure(
+        image("imagenes/qgis3pol.png", width: 55%),
+        caption: "Caso 3 (c): capa poligonal resultante tras aplicar Polylla.",
+    )
+
+== Caso 4: Figura compleja con agujeros
+
+Este caso corresponde a una geometría más compleja, con agujeros, caminos y contornos irregulares, representativa de entradas difíciles dentro del flujo del plugin.
+
+
+#figure(
+        image("imagenes/qgis4.png", width: 55%),
+        caption: "Caso 4 (a): capa poligonal de entrada, con agujeros, sin triangular.",
+    )
+
+#figure(
+        image("imagenes/qgis4tri.png", width: 55%),
+        caption: "Caso 4 (b): capa triangulada (min_angle=20, max_area=1000).",
+    )
+
+#figure(
+        image("imagenes/qgis4pol.png", width: 55%),
+        caption: "Caso 4 (c): capa poligonal resultante tras aplicar Polylla.",
+    )
+
+== Observaciones generales.
+
+En los cuatro casos se observa que el flujo completo se ejecuta exitosamente, generando salidas en cada etapa (triangulación y posterior aplicación de Polylla). La triangulación se ejecuta con los parámetros definidos (ángulo mínimo y área máxima), y Polylla genera una malla poligonal a partir de la triangulación sin introducir puntos adicionales al dominio. En los casos con agujeros, el resultado final preserva los vacíos internos definidos en la geometría de entrada. En ninguno de los casos presentados se observaron cierres inesperados de QGIS, mostrando un funcionamiento estable del enfoque adoptado para este conjunto de pruebas.
+
+
 ]
 
-#capitulo(title: "Conclusión")[
-    #lorem(100)
-    
-    #lorem(100)
-    
-    #lorem(100)
+#capitulo(title: "Conclusiones y trabajo futuro")[
+
+== Conclusiones
+
+En este trabajo se integró el algoritmo Polylla, originalmente en C++, en QGIS mediante la creación de una librería de Python a través de un binding, lo que permitió ejecutar Polylla desde el entorno de un plugin. En paralelo, se rediseñó el flujo de generación de mallas a partir del trabajo previo, separando la etapa de triangulación de la etapa de aplicación de Polylla. Esta decisión permitió aislar la triangulación como un subproceso externo y reducir los cierres inesperados de QGIS que ocurrían en la solución anterior durante la generación de triangulaciones en geometrías complejas.
+
+Como resultado, se implementó un plugin con un flujo de trabajo completo: selección de una capa poligonal, triangulación con parámetros configurables (ángulo mínimo y área máxima) y posterior generación de una malla poligonal mediante Polylla. La interfaz se organizó en dos diálogos alineados con estas etapas, permitiendo ejecutar el proceso y obtener salidas en disco para la triangulación y en memoria para la malla poligonal final. En los casos demostrativos presentados se observó un funcionamiento estable del flujo, sin cierres inesperados de QGIS.
+
+Durante el desarrollo se intentaron alternativas que no pudieron adoptarse. La triangulación con SciPy se descartó debido a limitaciones para controlar parámetros necesarios del proceso. Asimismo, la ejecución mediante QProcess no funcionó de forma consistente en el contexto del plugin, por lo que se optó por una invocación de subproceso desde Python. En la integración de Polylla también se decidió no incorporar la funcionalidad de GPU del proyecto original, con el fin de simplificar la implementación y concentrarse en una versión CPU compatible con el flujo del plugin.
+
+== Trabajo futuro
+
+Quedan abiertas varias líneas de trabajo para extender y evaluar la solución. En primer lugar, por limitaciones de tiempo, no se realizó un conjunto de pruebas cuantitativas para caracterizar el efecto de Polylla sobre la calidad geométrica de las mallas en distintos tipos de cuencas en comparación con la disolución presentanda por Villarroel @Villarroel23 en su memoria. Se recomendaría definir un diseño experimental sistemático y medir métricas como convexidad e índices de forma (por ejemplo, factor de forma), comparando resultados para distintas combinaciones de parámetros de triangulación y opciones de Polylla.
+
+En segundo lugar, también es posible explorar la incorporación de la versión con GPU del proyecto original de Polylla, así como añadir herramientas dentro del plugin para cálculo y visualización de métricas de calidad directamente en QGIS, facilitando el análisis y la comparación de mallas en un mismo entorno.
+
 ]
+
 
 #show: end-doc
 
-#apendice(title: "Anexo")[
-    #lorem(100)
-    
-    #lorem(100)
-    
-    #lorem(100)
-
-    @CorlessJK97 @Turing38
-
-    #figure(
-        image("imagenes/institucion/fcfm.svg", width: 20%),
-        caption: "Logo de la facultad",
-    )
-
-    #figure(
-        table(
-            columns: 3,
-            "Campo 1", "Campo 2", "Num",
-            "Valor 1a", "Valor 2a", "3",
-            "Valor 1b", "Valor 2b", "3",
-        ),
-        caption: "Tabla 1",
-    )
-
-#box(
-  inset: (top: 10pt, bottom: 10pt, left: 12pt, right: 12pt),
-  stroke: 1pt,
-  radius: 0pt,
-)[
-  *Algoritmo 1: Triangulación con Triangle* \
-
-  #line(length: 100%, stroke: 1pt)
-
-  *Datos:* Capa de polígonos (Polygon / MultiPolygon), `min_angle`, `max_area` \
-  *Resultado:* Triángulos (polígonos) exportables a SHP \
-
-  `triangulosAAgregar <- []` \
-  `para cada feat en CapaPoligonos hacer` \
-  `  geom <- feat.getGeometry()` \
-  `  si geom no es Polygon ni MultiPolygon entonces` \
-  `    continuar` \
-  `  fin` \
-  `  para cada poly en descomponerEnPoligonos(geom) hacer` \
-  `    vertices <- extraerVertices(poly)` \
-  `    segmentos <- build_simple_segments(vertices)` \
-  `    agujeros <- []` \
-  `    para cada anillo en holes(poly) hacer` \
-  `      p <- polygon_centroid(anillo)` \
-  `      agujeros.agregar(p)` \
-  `    fin` \
-  `    tri <- triangle.triangulate(vertices, segmentos, agujeros, min_angle, max_area)` \
-  `    para cada t en tri hacer` \
-  `      triangulosAAgregar.agregar(Polygon(t))` \
-  `    fin` \
-  `  fin` \
-  `fin` \
-  `retornar escribirComoSHP(triangulosAAgregar)`
-]
-
-]

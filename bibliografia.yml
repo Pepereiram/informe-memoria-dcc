@@ -39,3 +39,64 @@ Turing38:
   organization: Princeton University
   location: NJ, USA
   doi: "10.1112/plms/s2-45.1.161"
+
+Jankowfsky10:
+  type: Article
+  title: Development of a suburban catchment model within the LIQUID framework
+  author:
+    - Jankowfsky, S.
+    - Branger, F.
+    - Braud, I.
+    - Viallet, P.
+    - Debionne, S.
+    - Rodriguez. F.
+  year: 2010
+
+Flugel95:
+  type: Article
+  title: Delineating Hydrological Response Units by Geographical Information System Analyses for Regional Hydrological Modelling Using PRMS/MMS in the Drainage Basin of the River Bröl, Germany.
+  author:
+    - Flugel, W.
+  year: 1995
+  journal: Hydrological Processes
+  volume: 9
+  issue: 3
+  page-range: 423-436
+  doi: "0.1002/hyp.3360090313"
+  url: https://doi.org/10.1002/hyp.3360090313
+
+
+Sanzana12:
+  type: Thesis
+  title: Automatización del Procesamiento de Unidades de Respuesta Hidrológica (URHs) con GRASS para un Modelo Hidrológico Distribuido
+  author:
+    - Sanzana, P.
+  year: 2012
+  url: https://repositorio.uchile.cl/handle/2250/102771
+
+Villarroel23:
+  type: Thesis
+  title: Mejoramiento automático de mallas compuestas de unidades de respuesta hidológica (URHS) implementado en QGIS
+  author:
+    - Villarroel, S.
+  year: 2023
+  url: https://repositorio.uchile.cl/handle/2250/198101
+
+Salinas22:
+  type: Article
+  title: POLYLLA, polygonal meshing algorithm based on terminal-edge regions
+  author:
+    - Salinas Fernández, Sergio
+    - Hitschfeld Kahler, Nancy Viola
+    - Ortiz Bernardin, Alejandro Andrés
+    - Si, Hang
+  year: 2022
+  doi: 10.1007/s00366-022-01643-4
+  url: https://repositorio.uchile.cl/handle/2250/186136
+
+Shewchuk96:
+  type: Book
+  title: Triangle, Engineering a 2D Quality Mesh Generator and Delaunay Triangulator
+  author:
+    - Shewchuk, J. R.
+  year: 1996

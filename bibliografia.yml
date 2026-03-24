@@ -100,3 +100,17 @@ Shewchuk96:
   author:
     - Shewchuk, J. R.
   year: 1996
+
+Ruppert95:
+  type: Article
+  tittle: A Delaunay refinement algorithm for quality 2-dimensional mesh generation
+  doi: "10.1006/jagm.1995.1021"
+  author: 
+    - Ruppert, J
+  page-range: 548-585
+  parent:
+    tittle: Journal of Algorithms
+    volume: 18
+    number: 3
+    year: 1995
+    url: https://www.sciencedirect.com/science/article/pii/S0196677485710218

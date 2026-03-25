@@ -103,7 +103,7 @@ Shewchuk96:
 
 Ruppert95:
   type: Article
-  tittle: A Delaunay refinement algorithm for quality 2-dimensional mesh generation
+  title: A Delaunay refinement algorithm for quality 2-dimensional mesh generation
   doi: "10.1006/jagm.1995.1021"
   author: 
     - Ruppert, J
@@ -114,3 +114,19 @@ Ruppert95:
     number: 3
     year: 1995
     url: https://www.sciencedirect.com/science/article/pii/S0196677485710218
+
+DelaunayWiki:
+  type: Original
+  title: Point outside circle - Delaunay condition ok.svg
+  author:
+    - Jespa
+  year: 2017
+  url: https://commons.wikimedia.org/w/index.php?curid=56654600
+
+NoDelaunayWiki:
+  type: Original
+  title: Point inside circle - Delaunay condition broken.svg
+  author:
+    - Jespa
+  year: 2017
+  url: https://commons.wikimedia.org/w/index.php?curid=56654601

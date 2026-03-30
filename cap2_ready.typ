@@ -1,57 +1,68 @@
+#capitulo(title: "Situación Actual")[
+
 == Triangulaciones
 
 Una triangulación de un conjunto de puntos $S$ en el plano es una subdivisión del área delimitada por la envoltura convexa de $S$ en un conjunto de triángulos que se intersectan únicamente en sus vértices y aristas compartidas. En el contexto del modelamiento numérico, estas sirven para discretizar dominios continuos en elementos finitos procesables por algoritmos computacionales.
 
 Una de las triangulaciones estándar al día de hoy es la Triangulación de Delaunay. Esta se define como la triangulación tal que el círculo circunscrito de cada triángulo no contiene ningún otro punto del conjunto de entrada en su interior. Esta propiedad garantiza que se maximice el ángulo mínimo de todos los triángulos, evitando en la medida de lo posible la generación de triángulos "delgados".
 
-// [ NOTA FIGURA — no requiere permiso especial ]
-// Aquí va la figura comparativa de círculos circunscritos.
-// Fuente recomendada: Wikipedia (dominio público / CC-BY-SA).
-// Etiqueta sugerida: #figure(..., caption: [Comparación entre una
-// triangulación no-Delaunay (izquierda) y la Triangulación de Delaunay
-// (derecha). En la versión Delaunay ningún círculo circunscrito
-// contiene puntos del conjunto ajenos al triángulo que lo define.
-// Adaptado de @WikiDelaunay.])
-// Agrega la entrada bibliográfica correspondiente a Wikipedia si la usas.
+#figure(
+  grid(
+    columns: (1fr, 1fr),
+    gutter: 12pt,
+    image("imagenes/non_delaunay.svg", width: 80%),
+    image("imagenes/delaunay.svg", width: 80%),
+  ),
+  caption: [
+    Comparación entre una triangulación no-Delaunay @NoDelaunayWiki (izquierda) y la Triangulación de Delaunay @DelaunayWiki (derecha). En la versión Delaunay ningún círculo circunscrito contiene puntos del conjunto ajenos al triángulo que lo define.
+  ],
+) <fig-comparacion-delaunay>
 
 Cuando el dominio incluye fronteras físicas o barreras (en el caso de mallas urbanas, caminos y cuencas), se utiliza la Triangulación de Delaunay con Restricciones (_Constrained Delaunay triangulation_, CDT). A diferencia de la versión estándar, la CDT permite definir segmentos que deben aparecer obligatoriamente como aristas en la malla final, incluso si esto implica no satisfacer localmente la condición de Delaunay.
 
-// [ NOTA FIGURA — requiere citar fuente ]
-// Aquí va la Figura 9 del paper de Shewchuk @Shewchuk96, que muestra
-// la CDT y la malla refinada resultante (guitarra con ángulo mín. 20°).
-// Como es una figura de un paper publicado, cítala explícitamente:
-// caption: [Triangulación de Delaunay con Restricciones y posterior
-// refinamiento con ángulo mínimo de 20°. Fuente: @Shewchuk96.]
-// Verifica con tu universidad si basta la cita o si necesitas permiso
-// del autor para reproducirla en un trabajo publicado en biblioteca.
+#figure(
+        image("imagenes/guitar_original.png", width: 60%),
+        caption: [Guitarra eléctrica PSLG. @Shewchuk96],
+)
 
-AGREGAR:
-+ IMAGENES DE CIRCULOS CIRCUNSCRITO no-delaunay vs Delaunay wiki
-+ triangulo obstuso mostrando el punto nuevo dentro del ciruclo (fig 11 del papaer triangle)
-+ figura 9 de triangle.pdf para mostrar como CDT y el refinamiento de rupert funcionan
-+ mostrar algun ejemplo de malla hidrologica si es posible
+#figure(
+        image("imagenes/guitar_delaunay.png", width: 60%),
+        caption: [Triangulación de Delaunay sobre el PSLG. @Shewchuk96],
+)
+
+#figure(
+        image("imagenes/guitar_CDT.png", width: 60%),
+        caption: [Triangulación de CDT sobre el PSLG. @Shewchuk96],
+)
 
 === La librería Triangle
 La librería Triangle @Shewchuk96 es la implementación de referencia en la investigación académica para la generación de mallas de Delaunay en dos dimensiones. Su núcleo es el algoritmo de Refinamiento de Delaunay de Ruppert @Ruppert95, el cual permite construir mallas de "calidad garantizada", entendida como la ausencia de triángulos con ángulos menores a un umbral definido por el usuario.
 
-// [ NOTA CITA ]
-// @Ruppert95 corresponde a: Ruppert, J. (1995). A Delaunay refinement
-// algorithm for quality 2-dimensional mesh generation. Journal of
-// Algorithms, 18(3), 548–585. Agrégala a tu archivo .bib si no la
-// tienes aún; es la fuente primaria del algoritmo, distinta de @Shewchuk96.
+#figure(
+        image("imagenes/guitar_CDT_0Holes.png", width: 60%),
+        caption: [Triangulación de CDT sobre el PSLG con triángulos removidos de cavidades y agujeros. @Shewchuk96],
+)
+
+#figure(
+        image("imagenes/guitar_CDT_20min.png", width: 60%),
+        caption: [Triangulación de con el Refinamiento de Ruppert con 20° de ángulo mínimo. @Shewchuk96],
+)
 
 El proceso parte de una CDT del dominio de entrada y procede de forma iterativa insertando vértices adicionales —denominados puntos de Steiner— hasta que la malla satisface las restricciones de calidad solicitadas @Shewchuk96. La inserción de estos puntos se rige por dos reglas de prioridad:
 
 + *Invasión de segmentos (_encroachment_):* Se dice que un segmento es "invadido" si algún vértice de la malla cae dentro de su círculo diametral. Cuando esto ocurre, el segmento se divide insertando un vértice en su punto medio, reduciendo así el radio del círculo de los subsegmentos resultantes. Los segmentos invadidos tienen prioridad sobre cualquier otro tipo de refinamiento.
 
+#figure(
+        image("imagenes/encroachment.png", width: 70%),
+        caption: [Se dividen segmentos recursivamente hasta que no haya invasión de segmento. @Shewchuk96],
+)
+
 + *Triángulos malos (_bad triangles_):* Un triángulo se considera malo si su ángulo mínimo es inferior al umbral solicitado o si su área supera el máximo configurado. En tal caso, se inserta un nuevo vértice en el circuncentro del triángulo, lo que garantiza su eliminación por la propiedad de Delaunay. Si este nuevo vértice resultara a su vez en la invasión de algún segmento, la inserción se revierte y los segmentos afectados se dividen.
 
-// [ NOTA FIGURA — requiere citar fuente ]
-// Aquí va la Figura 11 del paper @Shewchuk96, que ilustra la
-// eliminación de un triángulo de mala calidad insertando un vértice
-// en su circuncentro. Caption sugerido:
-// [Eliminación de un triángulo de mala calidad mediante la inserción
-// de un vértice en su circuncentro. Fuente: @Shewchuk96.]
+#figure(
+        image("imagenes/bad_triangle.png", width: 70%),
+        caption: [Cada triángulo malo se divide poniendo un vértice en su circuncentro. @Shewchuk96],
+)
 
 Ruppert @Ruppert95 demostró que este procedimiento converge para restricciones de ángulo mínimo de hasta 20.7°, y en la práctica Triangle opera de manera confiable con ángulos de hasta 33° @Shewchuk96. El usuario controla la calidad de la malla mediante dos parámetros principales: el ángulo mínimo permitido y el área máxima de los triángulos.
 
@@ -209,23 +220,28 @@ Finalmente, el algoritmo que disuelve los polígonos es el siguiente:
   ],
 ) <alg-dissolve-features>
 
-// [ NOTA FIGURA — figura de Villarroel, citar explícitamente ]
-// Considerar incluir la Figura 3.2 del informe @Villarroel23, que
-// compara la URH original, la triangulación de Delaunay estándar, la
-// CDT sin restricciones y la CDT con ángulo mínimo 20°. Esto ilustra
-// de manera efectiva el efecto de los parámetros de triangulación.
-// Caption: [Efecto de los parámetros de triangulación sobre una URH.
-// (a) URH original, (b) Triangulación de Delaunay, (c) CDT sin
-// restricciones de calidad, (d) CDT con ángulo mínimo 20°.
-// Fuente: @Villarroel23.]
-// Verifica si el reglamento de tu universidad exige permiso del autor
-// para reproducir figuras de memorias de título previas.
+#figure(
+        image("imagenes/villarroel_URH.png", width: 80%),
+        caption: [Triangulación de una URH: (a) sin triangulación (b) triangulación de Delaunay (c) triangulación CDT sin criterios de calidad (d) triangulación con 20° de ángulo mínimo. @Villarroel23],
+)
 
 Si bien esta estrategia permite obtener polígonos que satisfacen criterios geométricos configurables, el plugin de QGIS desarrollado en dicho trabajo presentó problemas de inestabilidad al ejecutar la librería Triangle directamente dentro del proceso de QGIS, provocando cierres inesperados del software en geometrías complejas @Villarroel23.
 
 == Algoritmo Polylla
 
 Por otro lado, Salinas et al. @Salinas22 propusieron el algoritmo Polylla, un método indirecto de generación de mallas poligonales que parte de una triangulación de entrada y produce una malla de polígonos sin insertar ni eliminar ningún vértice. El algoritmo se basa en el concepto de _regiones de arista terminal_ (_terminal-edge regions_) @Salinas22 y se divide en tres fases: etiquetado, recorrido y reparación.
+
+#figure(
+  grid(
+    columns: (1fr, 1fr),
+    gutter: 12pt,
+    image("imagenes/pikachutriangulization.png", width: 80%),
+    image("imagenes/pikachuPolylla.png", width: 80%),
+  ),
+  caption: [
+    Comparación de un Pikachu triangulizado (izquierda) con uno al que se le aplico el algoritmo Polylla (derecha). @Salinas22
+  ],
+) <fig-comparacion-polylla>
 
 === Conceptos fundamentales
 
@@ -275,3 +291,5 @@ En la representación *vectorial*, los objetos geográficos se codifican como pu
 QGIS es una plataforma de código abierto para sistemas de información geográfica, ampliamente utilizada en investigación académica y en aplicaciones industriales. Su arquitectura permite extender las funcionalidades del software mediante _plugins_ escritos en Python, a través de la API PyQGIS.
 
 Sin embargo, la ejecución de código externo intensivo dentro del proceso de QGIS presenta restricciones en la gestión de memoria y en el manejo de subprocesos. En particular, el uso de librerías compiladas en C, como Triangle, dentro del mismo espacio de memoria del proceso principal de QGIS puede provocar errores de segmentación y cierres del software, especialmente al procesar geometrías complejas o mallas de gran tamaño @Villarroel23. Este problema motiva el rediseño de la arquitectura del plugin abordado en el presente trabajo.
+
+]

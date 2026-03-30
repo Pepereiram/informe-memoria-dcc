@@ -273,23 +273,23 @@ Finalmente, el algoritmo que disuelve los polígonos es el siguiente:
         caption: [Triangulación de una URH: (a) sin triangulación (b) triangulación de Delaunay (c) triangulación CDT sin criterios de calidad (d) triangulación con 20° de ángulo mínimo. @Villarroel23],
 )
 
-// [ NOTA FIGURA — figura de Villarroel, citar explícitamente ]
-// Considerar incluir la Figura 3.2 del informe @Villarroel23, que
-// compara la URH original, la triangulación de Delaunay estándar, la
-// CDT sin restricciones y la CDT con ángulo mínimo 20°. Esto ilustra
-// de manera efectiva el efecto de los parámetros de triangulación.
-// Caption: [Efecto de los parámetros de triangulación sobre una URH.
-// (a) URH original, (b) Triangulación de Delaunay, (c) CDT sin
-// restricciones de calidad, (d) CDT con ángulo mínimo 20°.
-// Fuente: @Villarroel23.]
-// Verifica si el reglamento de tu universidad exige permiso del autor
-// para reproducir figuras de memorias de título previas.
-
 Si bien esta estrategia permite obtener polígonos que satisfacen criterios geométricos configurables, el plugin de QGIS desarrollado en dicho trabajo presentó problemas de inestabilidad al ejecutar la librería Triangle directamente dentro del proceso de QGIS, provocando cierres inesperados del software en geometrías complejas @Villarroel23.
 
 == Algoritmo Polylla
 
 Por otro lado, Salinas et al. @Salinas22 propusieron el algoritmo Polylla, un método indirecto de generación de mallas poligonales que parte de una triangulación de entrada y produce una malla de polígonos sin insertar ni eliminar ningún vértice. El algoritmo se basa en el concepto de _regiones de arista terminal_ (_terminal-edge regions_) @Salinas22 y se divide en tres fases: etiquetado, recorrido y reparación.
+
+#figure(
+  grid(
+    columns: (1fr, 1fr),
+    gutter: 12pt,
+    image("imagenes/pikachutriangulization.png", width: 80%),
+    image("imagenes/pikachuPolylla.png", width: 80%),
+  ),
+  caption: [
+    Comparación de un Pikachu triangulizado (izquierda) con uno al que se le aplico el algoritmo Polylla (derecha). @Salinas22
+  ],
+) <fig-comparacion-polylla>
 
 === Conceptos fundamentales
 

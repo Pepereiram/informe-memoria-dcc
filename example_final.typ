@@ -105,7 +105,7 @@ El proceso parte de una CDT del dominio de entrada y procede de forma iterativa 
         caption: [Se dividen segmentos recursivamente hasta que no haya invasión de segmento. @Shewchuk96],
 )
 
-+ *Triángulos malos (_bad triangles_):* Un triángulo se considera malo si su ángulo mínimo es inferior al umbral solicitado o si su área supera el máximo configurado. En tal caso, se inserta un nuevo vértice en el circuncentro del triángulo, lo que garantiza su eliminación por la propiedad de Delaunay. Si este nuevo vértice resultara a su vez en la invasión de algún segmento, la inserción se revierte y los segmentos afectados se dividen.
++ *Triángulos malos (_bad triangles_):* Un triángulo se considera malo si su ángulo mínimo es inferior al umbral solicitado o si su área supera el máximo definido. En tal caso, se inserta un nuevo vértice en el circuncentro del triángulo, lo que garantiza su eliminación por la propiedad de Delaunay. Si este nuevo vértice resultara a su vez en la invasión de algún segmento, la inserción se revierte y los segmentos afectados se dividen.
 
 #figure(
         image("imagenes/bad_triangle.png", width: 70%),
@@ -345,46 +345,17 @@ Sin embargo, la ejecución de código externo intensivo dentro del proceso de QG
 #capitulo(title: "Implementación de la solución")[
 == Requerimientos de la solución
 
-En esta sección se establecen los requerimientos que guiaron la implementación del plugin y las decisiones adoptadas. Estos requerimientos se definieron a partir de los objetivos del trabajo y de los problemas observados en la solución previa, principalmente en lo relativo a estabilidad durante la triangulación e integración de un algoritmo externo (Polylla) en el entorno de QGIS.
+El plugin debe permitir ejecutar un flujo de dos etapas: primero la triangulación de una capa poligonal de entrada, con parámetros de calidad configurables (ángulo mínimo y área máxima), y luego la generación de una malla poligonal mediante Polylla sobre la triangulación resultante. Ambas etapas pueden ejecutarse de forma independiente o secuencial.
 
-=== Requisitos funcionales
-
-Los requisitos funcionales describen las acciones que el usuario debe poder realizar mediante el plugin y los resultados esperados en cada etapa. En este trabajo, el flujo se compone de una etapa de triangulación y una etapa de generación de malla poligonal mediante Polylla, con la posibilidad de ejecutar ambas de forma secuencial.
-
-La herramienta debe permitir lo siguiente:
-
-- Seleccionar una capa vectorial poligonal en QGIS como entrada para el proceso de malla.
-- Ejecutar la triangulación de la geometría de entrada, configurando al menos ángulo mínimo y área máxima.
-- Definir un directorio o ruta de salida para los archivos generados por la triangulación (por ejemplo, en formato SHP).
-- Seleccionar una capa triangulada como entrada para la ejecución de Polylla.
-- Aplicar Polylla sobre la triangulación seleccionada y generar como salida una malla poligonal como capa en memoria dentro de QGIS.
-- Ejecutar el flujo completo de forma secuencial: triangulación y luego Polylla.
-
-=== Requisitos no funcionales
-
-Los requisitos no funcionales establecen restricciones y propiedades del sistema asociadas al uso dentro de QGIS. Estos criterios son relevantes debido a que el trabajo se ejecuta en un entorno con un proceso principal que puede terminar en un _crash_ si ocurre una falla de bibliotecas externas, y donde los tiempos de ejecución y la claridad de la interfaz influyen directamente en la utilidad práctica del plugin.
-
-- Estabilidad: la ejecución de la triangulación no debe cerrar QGIS de forma abrupta al fallar, incluso ante geometrías no convexas o entradas complejas.
-- Aislamiento de fallos: si una etapa falla (triangulación o Polylla), el sistema debe terminar la ejecución de forma controlada y reportar el error al usuario.
-- Reproducibilidad: dado un mismo input y parámetros, el sistema debe producir resultados consistentes.
-- Mantenibilidad: el código debe quedar separado por componentes (triangulación y Polylla) para facilitar cambios y depuración.
-- Usabilidad: los parámetros principales deben estar disponibles en la interfaz, con valores por defecto razonables y validación de rangos.
-- Rendimiento: el tiempo de ejecución debe ser razonable para tamaños de entrada típicos.
+Dos restricciones condicionaron las decisiones de implementación. La primera es la estabilidad: la ejecución de la triangulación no debe cerrar QGIS de forma abrupta ante geometrías complejas o fallos de la librería. La segunda es el aislamiento de fallos: si una etapa falla, el error debe quedar contenido y reportarse al usuario sin afectar el proceso principal del SIG. Estas dos restricciones son las que motivaron la arquitectura descrita en la sección siguiente.
 
 == Arquitectura general de la solución
 
-En este apartado se describe la arquitectura general del plugin y el flujo de ejecución completo, desde la selección de una capa en QGIS hasta la generación de la malla poligonal final. La arquitectura se diseñó para responder a dos restricciones principales: por un lado, la necesidad de controlar parámetros de calidad durante la triangulación y, por otro, evitar cierres inesperados de QGIS asociados a la ejecución de rutinas de triangulación dentro del mismo proceso del SIG. Para ello, la solución se organiza en dos etapas, donde la triangulación se ejecuta como subproceso externo y Polylla se ejecuta dentro del entorno Python de QGIS utilizando el binding desarrollado. 
-
-
-=== Flujo de ejecución
-
-El flujo de trabajo comienza con la selección de una capa vectorial poligonal desde QGIS. Esta capa constituye la entrada geométrica del proceso, junto con los parámetros de triangulación definidos por el usuario (ángulo mínimo y área máxima). El plugin valida la existencia de una capa seleccionada, la presencia de geometrías y la coherencia de los parámetros numéricos.
-
-La etapa de triangulación se ejecuta como un subproceso independiente del sistema. El plugin define un directorio de trabajo y ejecuta el script asociado a la triangulación, entregando los parámetros configurados por el usuario. El resultado de esta etapa se materializa como archivos en disco en formato Shapefile (SHP), que representan la triangulación generada. Esta decisión permite que si ocurre un fallo durante la triangulación, el error quede contenido en el subproceso y no en el proceso principal de QGIS. Además, deja un resultado intermedio persistente que puede inspeccionarse o reutilizarse sin repetir la ejecución completa.
-
-En la etapa siguiente, Polylla opera sobre la triangulación ya generada. El plugin carga una capa triangulada en QGIS y ejecuta Polylla utilizando la librería de Python creada a partir del binding C++/Python. El resultado final corresponde a una malla poligonal que se entrega como una nueva capa en memoria, agregada al proyecto de QGIS para su visualización y uso posterior.
+La solución se organiza en dos etapas con mecanismos de ejecución distintos. La triangulación se ejecuta como subproceso externo al proceso principal de QGIS, de modo que cualquier fallo quede contenido y no produzca un cierre inesperado del SIG. Polylla, en cambio, se ejecuta dentro del entorno Python de QGIS mediante el binding desarrollado, como una tarea asíncrona que no bloquea la interfaz.
 
 === Componentes
+
+// [acá irá la figura de arquitectura]
 
 La solución se compone de los siguientes elementos:
 + Interfaces de usuario en QGIS: la interfaz de triangulación permite seleccionar la capa de entrada, configurar parámetros y definir rutas de salida para los productos de la triangulación, mientras que la interfaz de Polylla permite seleccionar una capa de entrada y el nombre de la capa de salida.
@@ -393,6 +364,12 @@ La solución se compone de los siguientes elementos:
 
 
 + Librería Polylla para Python (binding): trae el código C++ de Polylla al entorno Python. El plugin invoca esta librería para construir la malla poligonal a partir de la triangulación.
+
+=== Flujo de ejecución
+
+El flujo comienza con la selección de una capa vectorial poligonal en QGIS y la configuración de parámetros de triangulación. El plugin valida la entrada y lanza el script `triangulation.py` como subproceso, pasándole los parámetros configurados. El resultado se escribe en disco como un Shapefile de triángulos, lo que deja un producto intermedio persistente que puede inspeccionarse o reutilizarse sin repetir la ejecución completa.
+
+Una vez disponible la capa triangulada, el usuario puede ejecutar Polylla desde el segundo diálogo. El plugin convierte la capa al formato `OFF`, ejecuta Polylla mediante `py_polylla` dentro de una `QgsTask` y carga el resultado como una nueva capa en memoria en el proyecto de QGIS.
 
 == Integración de Polylla
 

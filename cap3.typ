@@ -30,6 +30,25 @@ Una vez disponible la capa triangulada, el usuario puede ejecutar Polylla desde 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - 
 
+=== Binding: Creación de py_polylla
+
+Para habilitar el uso de Polylla desde Python se implementó un módulo con `pybind11`, que se llamó `py_polylla`. Este módulo expone una interfaz acotada, centrada en la configuración del algoritmo y en su ejecución a partir de archivos de triangulación.
+
+El binding expone dos elementos principales:
+
++ *PolyllaOptions:* se expone como clase Python con sus campos configurables mediante `def_readwrite`. Los atributos expuestos corresponden a `smooth_method`, `smooth_iterations` y `target_length`, consistentes con la estructura declarada en `polylla.hpp`.
+
++ *Polylla:* se expone como clase Python con constructores que reciben rutas a archivos y una instancia opcional de `PolyllaOptions`. En el plugin se utiliza el constructor que recibe archivos en formato `OFF`.
+
+Para construir el módulo se utilizó `CMake` junto con `pybind11`. El archivo `CMakeLists.txt` localiza el entorno de Python para obtener sus headers y librerías, incorpora `pybind11` como dependencia y compila el wrapper como una biblioteca compartida importable desde Python.
+
+=== Construcción de la representación OFF
+
+A partir de la capa triangulada, el plugin construye la representación de entrada para Polylla en formato `OFF` mediante la función `build_off_from_layer`. Esta función recorre los triángulos de la capa y genera dos estructuras: un arreglo de vértices y un arreglo de caras, donde cada cara es una terna de índices hacia el arreglo de vértices. Dado que vértices adyacentes entre triángulos aparecen duplicados en la representación de la capa, se aplica una deduplicación basada en redondeo de coordenadas: los valores (x, y) se cuantizan a una cantidad fija de decimales antes de registrar cada vértice en el índice global, de modo que puntos coincidentes queden mapeados a una misma entrada.
+
+
+// - - - - - - - - - - - - - - - - - - - - - - - - 
+
 
 == Requerimientos de la solución
 

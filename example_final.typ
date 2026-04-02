@@ -355,8 +355,6 @@ La solución se organiza en dos etapas con mecanismos de ejecución distintos. L
 
 === Componentes
 
-// [acá irá la figura de arquitectura]
-
 La solución se compone de los siguientes elementos:
 + Interfaces de usuario en QGIS: la interfaz de triangulación permite seleccionar la capa de entrada, configurar parámetros y definir rutas de salida para los productos de la triangulación, mientras que la interfaz de Polylla permite seleccionar una capa de entrada y el nombre de la capa de salida.
 
@@ -370,6 +368,12 @@ La solución se compone de los siguientes elementos:
 El flujo comienza con la selección de una capa vectorial poligonal en QGIS y la configuración de parámetros de triangulación. El plugin valida la entrada y lanza el script `triangulation.py` como subproceso, pasándole los parámetros configurados. El resultado se escribe en disco como un Shapefile de triángulos, lo que deja un producto intermedio persistente que puede inspeccionarse o reutilizarse sin repetir la ejecución completa.
 
 Una vez disponible la capa triangulada, el usuario puede ejecutar Polylla desde el segundo diálogo. El plugin convierte la capa al formato `OFF`, ejecuta Polylla mediante `py_polylla` dentro de una `QgsTask` y carga el resultado como una nueva capa en memoria en el proyecto de QGIS.
+
+#figure(
+        image("imagenes/diagrama.png", width: 90%),
+        caption: [Diagrama del flujo de ejecución del plugin en QGIS.],
+)
+
 
 == Integración de Polylla
 
@@ -388,12 +392,12 @@ Desde el punto de vista de entradas, el proyecto original contempla la construcc
 Para habilitar el uso de Polylla desde Python se implementó un módulo con `pybind11`, que se llamó `py_polylla`. Este módulo expone una interfaz acotada, centrada en la configuración del algoritmo y en su ejecución a partir de archivos de triangulación.
 
 El binding expone dos elementos principales:
-+ PolyllaOptions: se expone como clase `Python` con sus campos configurables mediante `def_readwrite`. Los atributos expuestos corresponden a `smooth_method`, `smooth_iterations` y `target_length`, consistentes con la estructura declarada en `polylla.hpp`. Esto nos permite configurar el comportamiento del algoritmo.
 
++ *PolyllaOptions:* se expone como clase Python con sus campos configurables mediante `def_readwrite`. Los atributos expuestos corresponden a `smooth_method`, `smooth_iterations` y `target_length`, consistentes con la estructura declarada en `polylla.hpp`.
 
-+ Polylla: se expone como clase `Python` con constructores que reciben rutas a archivos y una instancia opcional de `PolyllaOptions`. Se hara uso del contructor de archivos en formato `OFF`.
++ *Polylla:* se expone como clase Python con constructores que reciben rutas a archivos y una instancia opcional de `PolyllaOptions`. En el plugin se utiliza el constructor que recibe archivos en formato `OFF`.
 
-Finalmente, para construir el módulo `py_polylla` se utilizó `CMake` como sistema de compilación, junto con `pybind11`. En términos generales, el archivo `CMakeLists.txt` localiza el entorno de Python para obtener sus headers y librerías, incorpora `pybind11` como dependencia y compila el archivo del wrapper como una biblioteca. El resultado es un artefacto importable desde Python, que luego puede ser utilizado desde el entorno de QGIS como una librería nativa.
+Para construir el módulo se utilizó `CMake` junto con `pybind11`. El archivo `CMakeLists.txt` localiza el entorno de Python para obtener sus headers y librerías, incorpora `pybind11` como dependencia y compila el wrapper como una biblioteca compartida importable desde Python.
 
 == Triangulación
 
@@ -429,20 +433,14 @@ El proceso de lectura y escritura utiliza fiona para operar sobre Shapefiles y S
 
 Polylla se ejecuta dentro del plugin como una etapa posterior a la triangulación. Su propósito es tomar una capa triangulada, convertirla a un formato de entrada compatible con el binding (`OFF`), ejecutar Polylla desde Python mediante el módulo py_polylla y transformar el resultado nuevamente a una capa que QGIS pueda cargar. Esta integración se implementa en el archivo `polylla_integration.py`.
 
-=== Entradas requeridas
-La entrada de Polylla es una capa que contiene la triangulación generada en la etapa anterior. En términos de estructura, el flujo asume que la capa de entrada:
+=== Construcción de la representación OFF
 
-- Está compuesta por features poligonales que representan triángulos.
+A partir de la capa triangulada, el plugin construye la representación de entrada para Polylla en formato `OFF` mediante la función `build_off_from_layer`. Esta función recorre los triángulos de la capa y genera dos estructuras: un arreglo de vértices y un arreglo de caras, donde cada cara es una terna de índices hacia el arreglo de vértices. Dado que vértices adyacentes entre triángulos aparecen duplicados en la representación de la capa, se aplica una deduplicación basada en redondeo de coordenadas: los valores (x, y) se cuantizan a una cantidad fija de decimales antes de registrar cada vértice en el índice global, de modo que puntos coincidentes queden mapeados a una misma entrada.
 
-- Cada triángulo se define por tres vértices, con el primer punto repetido al final (anillo cerrado).
-
-- Comparte un sistema de referencia (CRS).
-
-A partir de esta capa triangulada, el plugin construye la representación necesaria para Polylla en formato `OFF`. Esto se realiza mediante la función `build_off_from_layer`, que recorre los triángulos y genera dos estructuras: un arreglo de vértices y un arreglo de caras, donde cada cara es una terna de índices hacia el arreglo de vértices. Para evitar duplicación de vértices que representan el mismo punto, se aplica una estrategia de deduplicación basada en redondeo de coordenadas, que cuantiza los valores (x, y) a una cantidad fija de decimales antes de registrar un vértice global.
 
 === Ejecución de Polylla
 
-El puente principal de ejecución se implementa en run_polylla_off. Este método recibe como entrada un archivo OFF temporal (generado desde la capa triangulada). Con esto se construye una instancia de PolyllaOptions y se ejecuta Polylla sobre el archivo OFF de entrada. La salida se produce como un nuevo archivo OFF, que representa la malla poligonal resultante.
+El puente principal de ejecución se implementa en `run_polylla_off`. Este método recibe el archivo OFF temporal generado desde la capa triangulada, construye una instancia de `PolyllaOptions` con los parámetros configurados en el diálogo y ejecuta Polylla, produciendo un nuevo archivo OFF que representa la malla poligonal resultante.
 
 La ejecución completa se encapsula dentro de una tarea (PolyllaTask) basada en QgsTask. Esto permite que el proceso se ejecute sin bloquear la interfaz de QGIS y proporciona un punto de control para manejar errores y estados. El método run de la tarea define el flujo completo:
 
@@ -467,12 +465,11 @@ El diálogo de triangulación permite seleccionar una capa poligonal del proyect
 
 - Selector de capa de entrada (capas vectoriales poligonales).
 
+- Selección de directorio de salida mediante un selector de archivos.
+
 - Parámetros: ángulo mínimo y área máxima.
 
-- Parámetros asociados a descriptor de forma y umbral (presentes en la interfaz, con habilitación condicional del umbral).
-
-
-- Selección de directorio de salida mediante un selector de archivos.
+- Descriptor de forma (_shape descriptor_) y umbral (_threshold_): permiten filtrar triángulos según una medida de calidad geométrica antes de pasarlos a Polylla. El umbral se habilita condicionalmente según el descriptor seleccionado.
 
 - Botones de ejecución y cancelación.
 
@@ -485,7 +482,7 @@ La triangulación se ejecuta invocando el script triangulation.py como subproces
 
 === Diálogo de Polylla
 
-El diálogo de Polylla permite seleccionar la capa triangulada (capas poligonales) y configurar parámetros de suavizado:
+El dialogo de Polylla permite seleccionar la capa triangulada (capas poligonales) y configurar parámetros de suavizado:
 
 - Capa de entrada.
 
